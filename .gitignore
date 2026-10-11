@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.idea/
+.vscode/
+*.log
+.DS_Store
+streamdeck/node_modules/
+*.apk
+*.apks
+*.tar.xz
+apk-extract/
+firmware-store/

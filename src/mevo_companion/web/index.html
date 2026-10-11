@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mevo Companion</title>
+  <link rel="stylesheet" href="/static/styles.css?v=10" />
+</head>
+<body>
+  <header class="top">
+    <div>
+      <p class="eyebrow">Local control</p>
+      <h1>Mevo Companion</h1>
+    </div>
+    <div class="top-meta">
+      <span id="health" class="pill">starting</span>
+      <button type="button" id="refresh">Scan LAN</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel list-panel">
+      <div class="panel-head">
+        <h2>Cameras</h2>
+        <span id="count" class="muted">0</span>
+      </div>
+      <ul id="cameras"></ul>
+      <div class="firmware-box">
+        <div class="panel-head">
+          <h2>Firmware library</h2>
+        </div>
+        <p id="fw-status" class="muted">—</p>
+        <ul id="fw-images"></ul>
+        <div class="fw-actions">
+          <button type="button" id="fw-check">Check for updates</button>
+          <button type="button" id="fw-update-all">Update all outdated</button>
+          <button type="button" id="fw-task">Install Sunday checker</button>
+        </div>
+      </div>
+      <form id="manual" class="manual">
+        <p class="muted">Bonjour empty? Add by IP.</p>
+        <input name="host" placeholder="192.168.1.50" required />
+        <input name="port" placeholder="38000" value="38000" />
+        <input name="name" placeholder="Name (optional)" />
+        <button type="submit">Add</button>
+      </form>
+    </section>
+
+    <section class="panel detail-panel">
+      <div id="empty" class="empty">
+        <h2>No camera selected</h2>
+        <p>Turn the camera on, wait for it to join Wi‑Fi, then scan. Keep the Mevo phone app closed while this companion is talking to it.</p>
+      </div>
+      <div id="detail" class="detail hidden">
+        <h2 id="cam-name">—</h2>
+        <p id="cam-addr" class="muted"></p>
+        <p id="cam-session" class="muted"></p>
+        <p id="cam-fw" class="muted"></p>
+        <div id="cam-changelog" class="changelog hidden"></div>
+        <div class="actions">
+          <button type="button" data-action="connect">Connect</button>
+          <button type="button" data-action="ping">Ping</button>
+          <button type="button" data-action="probe">Probe</button>
+          <button type="button" data-action="update-firmware">Update firmware</button>
+          <button type="button" class="warn" data-action="reboot">Reboot</button>
+          <button type="button" class="danger" data-action="shutdown">Shutdown</button>
+        </div>
+        <div id="status" class="status" hidden></div>
+        <div class="preview-wrap">
+          <img id="cam-preview" alt="Camera preview" />
+          <p id="cam-preview-status" class="preview-status">Waiting for preview…</p>
+          <div id="fw-progress" class="fw-progress hidden" aria-hidden="true">
+            <div class="fw-spinner"></div>
+            <p id="fw-progress-text">Updating Mevo firmware. Please wait.</p>
+            <div class="fw-bar" aria-hidden="true">
+              <div id="fw-bar-fill" class="fw-bar-fill"></div>
+            </div>
+            <p id="fw-progress-pct" class="fw-pct">0%</p>
+          </div>
+        </div>
+        <h3>Settings</h3>
+        <pre id="cam-settings" class="status">—</pre>
+        <dl id="cam-meta" class="meta"></dl>
+        <h3>Stream Deck</h3>
+        <p class="muted">Stream Deck plugin is linked on this PC. HTTP fallback:</p>
+        <pre id="deck-url"></pre>
+      </div>
+    </section>
+  </main>
+  <div id="fw-dialog" class="modal hidden" aria-hidden="true">
+    <div class="modal-card">
+      <p class="modal-kicker">Firmware Update</p>
+      <p id="fw-dialog-lead"></p>
+      <h3>What's new:</h3>
+      <div id="fw-dialog-notes" class="changelog"></div>
+      <button type="button" id="fw-dialog-update" class="primary">Update now</button>
+      <button type="button" id="fw-dialog-cancel">Cancel</button>
+    </div>
+  </div>
+  <script src="/static/app.js?v=20"></script>
+</body>
+</html>

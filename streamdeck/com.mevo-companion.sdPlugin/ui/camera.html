@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Mevo camera</title>
+    <style>
+      body {
+        font-family: Segoe UI, sans-serif;
+        color: #d8d8d8;
+        background: #2d2d2d;
+        margin: 12px;
+        font-size: 13px;
+      }
+      label { display: block; margin-bottom: 6px; color: #9a9a9a; }
+      select, .hint {
+        width: 100%;
+        box-sizing: border-box;
+      }
+      select {
+        background: #1f1f1f;
+        color: #f0f0f0;
+        border: 1px solid #444;
+        padding: 6px;
+      }
+      .hint { margin-top: 10px; color: #888; }
+      .err { color: #e88; }
+    </style>
+  </head>
+  <body>
+    <label for="camera">Camera</label>
+    <select id="camera">
+      <option value="">Loading…</option>
+    </select>
+    <p id="hint" class="hint">Mevo Companion must be running on this PC.</p>
+    <script>
+      const API = "http://127.0.0.1:8787";
+      let uuid = "";
+      let savedId = "";
+
+      function hintForAction(actionId) {
+        const id = String(actionId || "");
+        if (id.includes("battery")) {
+          return "Shows this camera's battery as a colored ring and percentage. Press the key to refresh.";
+        }
+        if (id.includes("firmware")) {
+          return "Green dot = latest. Orange dot = update waiting. Press the key to start it; progress shows on the key and in Companion.";
+        }
+        if (id.includes("reboot")) {
+          return "Reboot sends reboot through the local companion.";
+        }
+        return "Power off sends shut_down through the local companion.";
+      }
+
+      function send(payload) {
+        window.opener || window;
+        if (!uuid) return;
+        window.websocket?.send(JSON.stringify({ ...payload, context: uuid }));
+      }
+
+      function setSettings(cameraId) {
+        if (!window.websocket || window.websocket.readyState !== 1) return;
+        window.websocket.send(
+          JSON.stringify({
+            event: "setSettings",
+            context: uuid,
+            payload: { cameraId },
+          })
+        );
+      }
+
+      async function loadCameras() {
+        const select = document.getElementById("camera");
+        const hint = document.getElementById("hint");
+        try {
+          const res = await fetch(`${API}/api/cameras`);
+          if (!res.ok) throw new Error("companion HTTP " + res.status);
+          const data = await res.json();
+          const cameras = data.cameras || [];
+          select.innerHTML = '<option value="">Select camera</option>';
+          for (const cam of cameras) {
+            const option = document.createElement("option");
+            option.value = cam.id;
+            const label = (cam.txt && cam.txt.camera_name) || cam.name;
+            option.textContent = cam.offline ? `${label} (off)` : label;
+            const aliases = cam.aliases || [];
+            if (cam.id === savedId || aliases.includes(savedId)) option.selected = true;
+            select.appendChild(option);
+          }
+          hint.textContent = cameras.length
+            ? hintForAction(window.currentActionId)
+            : "No cameras yet. Open Mevo Companion and scan the LAN.";
+          hint.classList.remove("err");
+        } catch (err) {
+          select.innerHTML = '<option value="">Companion not running</option>';
+          hint.textContent = "Start Mevo Companion (python -m mevo_companion), then reopen this.";
+          hint.classList.add("err");
+        }
+      }
+
+      document.getElementById("camera").addEventListener("change", (event) => {
+        savedId = event.target.value;
+        setSettings(savedId);
+      });
+
+      window.connectElgatoStreamDeckSocket = function (port, inUuid, registerEvent, info, actionInfo) {
+        uuid = inUuid;
+        try {
+          const parsed = JSON.parse(actionInfo || "{}");
+          savedId = (parsed.payload && parsed.payload.settings && parsed.payload.settings.cameraId) || "";
+          window.currentActionId = parsed.action || "";
+        } catch {
+          savedId = "";
+          window.currentActionId = "";
+        }
+        window.websocket = new WebSocket("ws://127.0.0.1:" + port);
+        window.websocket.onopen = function () {
+          window.websocket.send(JSON.stringify({ event: registerEvent, uuid: inUuid }));
+          loadCameras();
+        };
+      };
+    </script>
+  </body>
+</html>

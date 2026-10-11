@@ -1,0 +1,95 @@
+{
+	"SDKVersion": 3,
+	"Name": "Mevo Companion",
+	"Version": "0.1.4.0",
+	"Author": "Mevo Companion",
+	"UUID": "com.mevo-companion",
+	"Description": "Power off, reboot, update, and monitor Mevo cameras through the local Mevo Companion app.",
+	"Category": "Mevo Companion",
+	"Icon": "imgs/plugin",
+	"CategoryIcon": "imgs/plugin",
+	"OS": [
+		{
+			"Platform": "windows",
+			"MinimumVersion": "10"
+		}
+	],
+	"Software": {
+		"MinimumVersion": "6.9"
+	},
+	"Nodejs": {
+		"Version": "20"
+	},
+	"CodePath": "bin/plugin.js",
+	"PropertyInspectorPath": "ui/camera.html",
+	"Actions": [
+		{
+			"Name": "Power off",
+			"UUID": "com.mevo-companion.shutdown",
+			"Tooltip": "Shut down the selected Mevo camera",
+			"Icon": "imgs/shutdown",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/shutdown",
+					"Title": "Power off",
+					"TitleAlignment": "middle",
+					"FontSize": 11
+				}
+			]
+		},
+		{
+			"Name": "Reboot",
+			"UUID": "com.mevo-companion.reboot",
+			"Tooltip": "Reboot the selected Mevo camera",
+			"Icon": "imgs/reboot",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/reboot",
+					"Title": "Reboot",
+					"TitleAlignment": "middle",
+					"FontSize": 11
+				}
+			]
+		},
+		{
+			"Name": "Firmware update",
+			"UUID": "com.mevo-companion.firmware",
+			"Tooltip": "Green = latest firmware. Orange = update available. Press to start the update.",
+			"Icon": "imgs/firmware",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/firmware",
+					"Title": "Firmware",
+					"TitleAlignment": "bottom",
+					"FontSize": 11
+				}
+			]
+		},
+		{
+			"Name": "Battery",
+			"UUID": "com.mevo-companion.battery",
+			"Tooltip": "Live battery ring and percentage for the selected Mevo camera",
+			"Icon": "imgs/battery",
+			"Controllers": [
+				"Keypad"
+			],
+			"States": [
+				{
+					"Image": "imgs/battery",
+					"Title": "Battery",
+					"TitleAlignment": "bottom",
+					"FontSize": 11
+				}
+			]
+		}
+	]
+}
