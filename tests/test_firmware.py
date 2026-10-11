@@ -147,21 +147,28 @@ class FirmwareArchiveTests(unittest.TestCase):
             os.environ["MEVO_COMPANION_STORE"] = previous
 
 
-class SundaySkipTests(unittest.TestCase):
+class SignInSkipTests(unittest.TestCase):
     tz = timezone(timedelta(hours=-5))
 
-    def test_bootstrap_and_sunday(self) -> None:
-        sunday = datetime(2026, 9, 20, 9, 0, tzinfo=self.tz)
-        self.assertFalse(should_skip_check(None, sunday))
-        last = sunday.isoformat()
-        self.assertTrue(should_skip_check(last, sunday.replace(hour=18)))
-        monday = datetime(2026, 9, 21, 8, 0, tzinfo=self.tz)
-        self.assertTrue(should_skip_check(last, monday))
-        next_sunday = datetime(2026, 9, 27, 8, 0, tzinfo=self.tz)
-        self.assertFalse(should_skip_check(last, next_sunday))
-        stale = datetime(2026, 9, 6, 8, 0, tzinfo=self.tz).isoformat()
-        monday_catchup = datetime(2026, 9, 14, 8, 0, tzinfo=self.tz)
-        self.assertFalse(should_skip_check(stale, monday_catchup))
+    def test_skips_only_after_this_sign_in(self) -> None:
+        logon = datetime(2026, 10, 11, 9, 25, tzinfo=self.tz)
+        self.assertFalse(should_skip_check(None, logon))
+        earlier = datetime(2026, 10, 10, 18, 0, tzinfo=self.tz).isoformat()
+        self.assertFalse(should_skip_check(earlier, logon))
+        self.assertTrue(should_skip_check(logon.isoformat(), logon))
+        later = datetime(2026, 10, 11, 9, 40, tzinfo=self.tz).isoformat()
+        self.assertTrue(should_skip_check(later, logon))
+
+    def test_missing_logon_time_does_not_skip(self) -> None:
+        from mevo_companion.firmware import check
+
+        last = datetime(2026, 10, 11, 9, 40, tzinfo=self.tz).isoformat()
+        orig = check.current_logon_time
+        check.current_logon_time = lambda: None  # type: ignore[method-assign]
+        try:
+            self.assertFalse(should_skip_check(last))
+        finally:
+            check.current_logon_time = orig  # type: ignore[method-assign]
 
 
 class FirmwarePushTests(unittest.TestCase):
@@ -348,30 +355,23 @@ Stability improvements
 
 
 class ScheduleCacheTests(unittest.TestCase):
-    def test_schedule_info_reuses_cache(self) -> None:
-        import subprocess
-
+    def test_schedule_info_does_not_shell_out(self) -> None:
         from mevo_companion.firmware import schedule
 
-        calls = {"n": 0}
+        def boom(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("schedule status must not run schtasks")
 
-        def fake_run(args: list[str]) -> subprocess.CompletedProcess[str]:
-            calls["n"] += 1
-            return subprocess.CompletedProcess(["schtasks", *args], 0, "ok", "")
-
-        orig_run = schedule._run_schtasks
-        orig_cache = schedule._cache
-        schedule._cache = None
-        schedule._run_schtasks = fake_run  # type: ignore[method-assign]
+        orig = schedule._run_schtasks
+        schedule._run_schtasks = boom  # type: ignore[method-assign]
         try:
-            first = schedule.schedule_info(force=True)
-            second = schedule.schedule_info()
-            self.assertEqual(first["name"], schedule.TASK_NAME)
-            self.assertEqual(second["weekly"], first["weekly"])
-            self.assertEqual(calls["n"], 2)
+            info = schedule.schedule_info(force=True)
         finally:
-            schedule._run_schtasks = orig_run  # type: ignore[method-assign]
-            schedule._cache = orig_cache
+            schedule._run_schtasks = orig  # type: ignore[method-assign]
+        self.assertEqual(
+            info["triggers"],
+            ["Once after sign-in, when the network is connected"],
+        )
+        self.assertFalse(info["weekly"])
 
     def test_public_status_light_skips_schedule(self) -> None:
         import tempfile

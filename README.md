@@ -107,7 +107,7 @@ The companion keeps a local firmware library in `firmware-store` (created on fir
 .\.venv\Scripts\python.exe -m mevo_companion.firmware check
 ```
 
-`install-firmware-task.bat` registers a scheduled task that checks for new firmware. `check-firmware.bat` runs one check and appends to `firmware-store\check.log`.
+`check-firmware.bat` runs one check and appends to `firmware-store\check.log`. The companion itself checks once after you sign in, after Windows reports a network connection. It does not use a repeating scheduled task.
 
 ## Network
 

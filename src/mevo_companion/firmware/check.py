@@ -21,6 +21,7 @@ from mevo_companion.firmware.archive import (
     version_newer,
 )
 from mevo_companion.firmware.schedule import schedule_info
+from mevo_companion.firmware.session import current_logon_time
 from mevo_companion.firmware.store import (
     load_catalog,
     load_state,
@@ -48,27 +49,23 @@ def parse_iso(value: str) -> datetime:
     return parsed
 
 
-def should_skip_check(last_success: str | None, now: datetime | None = None) -> bool:
-    """Skip unless this is Sunday (once a day) or a missed-Sunday catch-up.
-
-    Logon can fire any day. The scheduled task also fires Sunday morning.
-    After a successful check we wait for the next Sunday, unless the last
-    success is 8+ days old (PC was off last Sunday). Weekday is local time.
-    """
+def should_skip_check(last_success: str | None, logon: datetime | None = None) -> bool:
+    """Skip when this Windows sign-in already finished a firmware check."""
     if not last_success:
         return False
-    now = now or datetime.now().astimezone()
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+    if logon is None:
+        logon = current_logon_time()
+    if logon is None:
+        return False
     try:
-        last = parse_iso(last_success).astimezone(now.tzinfo)
+        last = parse_iso(last_success)
     except ValueError:
         return False
-    if now - last < timedelta(hours=12):
-        return True
-    if now.weekday() == 6:
-        return last.date() == now.date()
-    return now - last < timedelta(days=8)
+    if last.tzinfo is None:
+        last = last.replace(tzinfo=timezone.utc)
+    if logon.tzinfo is None:
+        logon = logon.replace(tzinfo=timezone.utc)
+    return last >= logon.astimezone(last.tzinfo)
 
 
 def seed_paths() -> list[Path]:
@@ -408,7 +405,7 @@ def run_check(*, force: bool = False, progress: Callable[[str], None] | None = N
 def _run_check_locked(*, force: bool, note: Callable[[str], None]) -> dict[str, Any]:
     state = load_state()
     if not force and should_skip_check(state.get("last_success")):
-        message = "Already checked this Sunday cycle"
+        message = "Already checked since you signed in"
         note(message)
         _set_state(status="idle", skipped=True, message=message)
         return {"ok": True, "skipped": True, "reason": message}

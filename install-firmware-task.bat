@@ -13,7 +13,7 @@ if not exist "%PY%" (
 set "ERR=%ERRORLEVEL%"
 if not "%ERR%"=="0" (
   echo.
-  echo Could not install the Sunday checker.
+  echo Could not remove the old firmware scheduled task.
   pause
 )
 exit /b %ERR%

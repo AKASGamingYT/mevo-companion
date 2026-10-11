@@ -682,7 +682,6 @@ function renderFirmware(data) {
   const statusElFw = document.getElementById("fw-status");
   const imagesEl = document.getElementById("fw-images");
   const checkBtn = document.getElementById("fw-check");
-  const taskBtn = document.getElementById("fw-task");
   const checking = data.status === "checking";
   const updating = jobsActive(data);
   const outdated = (data.cameras || []).filter(
@@ -691,7 +690,7 @@ function renderFirmware(data) {
   const parts = [];
   if (data.app?.version) parts.push(`app ${data.app.version}`);
   if (data.message) parts.push(data.message);
-  else if (data.schedule?.installed) parts.push("Sunday checker installed");
+  else parts.push("Checks once after sign-in, when online");
   statusElFw.textContent = parts.join(" · ") || "No firmware library yet";
   bindFirmwareImages(imagesEl);
   renderFirmwareImages(imagesEl, data);
@@ -702,13 +701,6 @@ function renderFirmware(data) {
     updateAllBtn.disabled = outdated === 0;
     updateAllBtn.textContent =
       outdated > 0 ? `Update all outdated (${outdated})` : "All cameras current";
-  }
-  if (data.schedule?.installed) {
-    taskBtn.textContent = "Remove Sunday checker";
-    taskBtn.dataset.action = "uninstall";
-  } else {
-    taskBtn.textContent = "Install Sunday checker";
-    taskBtn.dataset.action = "install";
   }
   const nextSelectedKey = selectedFirmwareKey(data);
   if (selectedId && nextSelectedKey !== lastSelectedFwKey) {
@@ -829,23 +821,4 @@ document.getElementById("fw-dialog-update").addEventListener("click", () => clos
 document.getElementById("fw-dialog-cancel").addEventListener("click", () => closeFirmwareDialog(false));
 document.getElementById("fw-dialog").addEventListener("click", (event) => {
   if (event.target.id === "fw-dialog") closeFirmwareDialog(false);
-});
-
-document.getElementById("fw-task").addEventListener("click", async (event) => {
-  const action = event.currentTarget.dataset.action || "install";
-  try {
-    const data = await api("/api/firmware/task", {
-      method: "POST",
-      body: JSON.stringify({ action }),
-    });
-    renderFirmware(data);
-    showStatus(
-      data.schedule?.installed
-        ? "Sunday checker installed (sign-in + Sunday 08:00)."
-        : "Sunday checker removed.",
-      false,
-    );
-  } catch (err) {
-    showStatus(err.message, true);
-  }
 });

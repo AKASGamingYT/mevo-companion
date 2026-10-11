@@ -147,6 +147,9 @@ def main(argv: list[str] | None = None) -> int:
         thread = threading.Thread(target=server.run, daemon=True)
         thread.start()
         _wait_for_server(url)
+        from mevo_companion.firmware.login_check import start_login_check
+
+        start_login_check()
         if args.open_ui:
             webbrowser.open(url)
 

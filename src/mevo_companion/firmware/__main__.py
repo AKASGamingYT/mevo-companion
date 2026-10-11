@@ -17,15 +17,15 @@ def main(argv: list[str] | None = None) -> int:
     check_parser.add_argument(
         "--force",
         action="store_true",
-        help="Run even if this Sunday cycle already succeeded",
+        help="Run even if this sign-in already checked",
     )
 
     ingest_parser = sub.add_parser("ingest", help="Extract firmware from a local APK or APKS bundle")
     ingest_parser.add_argument("path", type=Path)
 
-    sub.add_parser("status", help="Print library and Sunday-task status")
-    sub.add_parser("install-task", help="Install the Sunday + logon scheduled task")
-    sub.add_parser("uninstall-task", help="Remove the scheduled task")
+    sub.add_parser("status", help="Print library status")
+    sub.add_parser("install-task", help="Remove the old weekly task; the check runs at sign-in")
+    sub.add_parser("uninstall-task", help="Remove the old weekly scheduled task")
 
     args = parser.parse_args(argv)
     if args.command == "check":
@@ -56,15 +56,17 @@ def main(argv: list[str] | None = None) -> int:
         for image in status.get("images") or []:
             print(f"  {image.get('label')} {image.get('version')}")
         schedule = status.get("schedule") or {}
-        print(f"sunday_task: {'installed' if schedule.get('installed') else 'not installed'}")
+        triggers = schedule.get("triggers") or []
+        print(f"check: {triggers[0] if triggers else 'once after sign-in, when online'}")
         return 0
     if args.command == "install-task":
         try:
-            info = install_task()
+            install_task()
         except ScheduleError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print(f"Installed {info.get('name')}")
+        print("Firmware check runs once after sign-in, when the network is connected.")
+        print("Removed the old scheduled task if it was still installed.")
         return 0
     if args.command == "uninstall-task":
         try:
@@ -72,7 +74,7 @@ def main(argv: list[str] | None = None) -> int:
         except ScheduleError as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print("Removed Sunday checker task")
+        print("Removed the old scheduled firmware task")
         return 0
     return 1
 
