@@ -6,6 +6,7 @@ import os
 import sys
 import threading
 import time
+import traceback
 import webbrowser
 
 import httpx
@@ -65,6 +66,30 @@ def _ensure_stdio() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     _ensure_stdio()
+    try:
+        return _main(argv)
+    except SystemExit:
+        raise
+    except Exception:
+        _record_startup_error()
+        raise
+
+
+def _record_startup_error() -> None:
+    if not getattr(sys, "frozen", False):
+        return
+    try:
+        from mevo_companion.runtime import user_data_dir
+
+        path = user_data_dir() / "startup-error.log"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(traceback.format_exc(), encoding="utf-8")
+    except Exception:
+        return
+
+
+def _main(argv: list[str] | None = None) -> int:
+    _ensure_stdio()
     parser = argparse.ArgumentParser(description="Mevo Companion desktop app")
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
@@ -86,14 +111,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--install-startup",
         action="store_true",
-        help="Start in the system tray at Windows sign-in",
+        help="Start Mevo Companion when you sign in",
     )
     parser.add_argument(
         "--uninstall-startup",
         action="store_true",
-        help="Stop launching Mevo Companion at Windows sign-in",
+        help="Stop launching Mevo Companion at sign-in",
+    )
+    parser.add_argument(
+        "--quit",
+        action="store_true",
+        help="Ask the running Mevo Companion to exit",
     )
     args = parser.parse_args(argv)
+    if args.quit:
+        return _quit(args.host, args.port)
     if args.install_startup and args.uninstall_startup:
         parser.error("use either --install-startup or --uninstall-startup")
     if args.no_window and args.window:
@@ -133,7 +165,9 @@ def main(argv: list[str] | None = None) -> int:
 
     registry = CameraRegistry()
     registry.start()
+    stop = threading.Event()
     app = create_app(registry)
+    app.state.stop = stop
     server = None
     try:
         config = uvicorn.Config(
@@ -156,20 +190,20 @@ def main(argv: list[str] | None = None) -> int:
         if args.no_window:
             print(f"Mevo Companion API at {url}", flush=True)
             print("Ctrl+C to stop", flush=True)
-            while thread.is_alive():
-                time.sleep(0.4)
+            _wait_until_stopped(thread, stop)
         elif args.window:
             _open_window(url)
         else:
             try:
                 from mevo_companion.tray import run_tray
 
-                run_tray(url)
+                run_tray(url, on_ready=lambda icon: setattr(app.state, "tray", icon))
             except Exception as exc:
-                print(f"System tray unavailable ({exc}). API is still running.", flush=True)
-                print("Ctrl+C to stop", flush=True)
-                while thread.is_alive():
-                    time.sleep(0.4)
+                print(f"System tray unavailable ({exc}). Opening the web UI in your browser.", flush=True)
+                print("Ctrl+C to stop, or run Mevo Companion with --quit.", flush=True)
+                if not args.open_ui:
+                    webbrowser.open(url)
+                _wait_until_stopped(thread, stop)
     except KeyboardInterrupt:
         pass
     finally:
@@ -181,6 +215,23 @@ def main(argv: list[str] | None = None) -> int:
         registry.stop()
         lock.release()
     return 0
+
+
+def _quit(host: str, port: int) -> int:
+    url = f"http://{host}:{port}/api/shutdown"
+    try:
+        response = httpx.post(url, timeout=2.0)
+        response.raise_for_status()
+    except httpx.HTTPError:
+        print("Mevo Companion is not running.", file=sys.stderr, flush=True)
+        return 1
+    print("Mevo Companion is stopping.", flush=True)
+    return 0
+
+
+def _wait_until_stopped(thread: threading.Thread, stop: threading.Event) -> None:
+    while thread.is_alive() and not stop.is_set():
+        time.sleep(0.4)
 
 
 def _already_running(url: str, *, open_ui: bool) -> int:
@@ -247,4 +298,7 @@ def _open_window(url: str) -> None:
 
 
 if __name__ == "__main__":
+    import multiprocessing
+
+    multiprocessing.freeze_support()
     sys.exit(main())

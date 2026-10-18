@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, NoReturn
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -23,6 +23,7 @@ from mevo_companion.preview import PreviewHub
 from mevo_companion.web import WEB_DIR
 
 _sessions: dict[str, CameraSession] = {}
+_LOCAL_CLIENTS = {"127.0.0.1", "::1", "localhost", "testclient"}
 
 
 class ManualCameraIn(BaseModel):
@@ -138,6 +139,22 @@ def create_app(registry: CameraRegistry) -> FastAPI:
             "version": __version__,
             "listen": f"http://{DEFAULT_HOST}:{DEFAULT_PORT}",
         }
+
+    @app.post("/api/shutdown")
+    def shutdown(request: Request) -> dict[str, bool]:
+        client = request.client.host if request.client else ""
+        if client not in _LOCAL_CLIENTS:
+            raise HTTPException(status_code=403, detail="Shutdown is only available from this computer")
+        stop = getattr(request.app.state, "stop", None)
+        if stop is not None:
+            stop.set()
+        tray = getattr(request.app.state, "tray", None)
+        if tray is not None:
+            try:
+                tray.stop()
+            except Exception:
+                pass
+        return {"ok": True}
 
     @app.get("/api/cameras")
     def list_cameras() -> dict[str, Any]:

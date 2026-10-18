@@ -27,8 +27,8 @@ class InstanceLock:
     Windows uses a named mutex. Other platforms use an exclusive file lock.
     """
 
-    def __init__(self, key: str = DEFAULT_KEY) -> None:
-        self.key = key or DEFAULT_KEY
+    def __init__(self, key: str | None = None) -> None:
+        self.key = key or os.environ.get("MEVO_COMPANION_INSTANCE") or DEFAULT_KEY
         self._handle: int | None = None
         self._fd: int | None = None
 

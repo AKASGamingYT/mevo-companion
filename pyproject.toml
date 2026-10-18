@@ -19,6 +19,7 @@ dependencies = [
     "cyndilib>=0.1.1",
     "pillow>=10.0",
     "pystray>=0.19",
+    "cyndilib>=0.1.1; sys_platform != 'linux'",
 ]
 
 [project.scripts]

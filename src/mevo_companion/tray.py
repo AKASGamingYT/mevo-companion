@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import webbrowser
+from collections.abc import Callable
 from pathlib import Path
 
 from PIL import Image
 
+from mevo_companion.runtime import bundle_dir, is_frozen
+
 
 def icon_path() -> Path:
+    if is_frozen():
+        return bundle_dir() / "mevo_companion" / "assets" / "mevo.png"
     return Path(__file__).resolve().parent / "assets" / "mevo.png"
 
 
@@ -20,7 +25,7 @@ def load_icon() -> Image.Image:
     return image
 
 
-def run_tray(url: str) -> None:
+def run_tray(url: str, on_ready: Callable[..., None] | None = None) -> None:
     import pystray
 
     def open_ui(_icon: pystray.Icon, _item: pystray.MenuItem) -> None:
@@ -34,4 +39,6 @@ def run_tray(url: str) -> None:
         pystray.MenuItem("Quit", quit_app),
     )
     icon = pystray.Icon("mevo-companion", load_icon(), "Mevo Companion", menu)
+    if on_ready is not None:
+        on_ready(icon)
     icon.run()

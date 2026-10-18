@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from mevo_companion.runtime import is_frozen, user_data_dir
+
 
 def repo_root() -> Path:
     here = Path(__file__).resolve()
@@ -19,6 +21,8 @@ def store_dir() -> Path:
     override = os.environ.get("MEVO_COMPANION_STORE")
     if override:
         return Path(override)
+    if is_frozen():
+        return user_data_dir() / "firmware-store"
     return repo_root() / "firmware-store"
 
 

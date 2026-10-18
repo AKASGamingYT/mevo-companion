@@ -33,6 +33,8 @@ def startup_script() -> Path:
 
 
 def _run_schtasks(args: list[str]) -> subprocess.CompletedProcess[str]:
+    if os.name != "nt":
+        return subprocess.CompletedProcess(["schtasks", *args], 1, "", "not windows")
     try:
         return subprocess.run(
             ["schtasks", *args],

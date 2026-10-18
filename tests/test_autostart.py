@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -61,6 +62,15 @@ class AutostartTests(unittest.TestCase):
         image = load_icon()
         self.assertGreaterEqual(image.size[0], 16)
         self.assertEqual(image.mode, "RGBA")
+
+    def test_frozen_startup_launches_the_executable(self) -> None:
+        with patch("mevo_companion.autostart.is_frozen", return_value=True):
+            info = autostart.install_autostart()
+        text = Path(str(info["path"])).read_text(encoding="utf-8")
+        self.assertIn(Path(sys.executable).name, text)
+        self.assertNotIn("-m mevo_companion", text)
+        self.assertIn(", 0, False", text)
+        self.assertTrue(info["installed"])
 
     def test_install_startup_cli_exits_without_server(self) -> None:
         from mevo_companion.__main__ import main
